@@ -1,0 +1,15 @@
+# https://github.com/elastic/kibana/blob/main/config/kibana.yml
+
+server.name: kibana
+server.host: 0.0.0.0
+elasticsearch.hosts: [https://elasticsearch:9200]
+elasticsearch.username: kibana_system
+elasticsearch.password: password
+elasticsearch.ssl.certificateAuthorities: /usr/share/kibana/config/certs/ca/ca.crt
+elasticsearch.ssl.verificationMode: certificate
+server.ssl.enabled: true
+server.ssl.certificate: /usr/share/kibana/config/certs/kibana/kibana.crt
+server.ssl.key: /usr/share/kibana/config/certs/kibana/kibana.key
+xpack.security.encryptionKey: c34d38b3a14956121ff2170e5030b471551370178f43e5626eec58b04a30fae2
+xpack.encryptedSavedObjects.encryptionKey: c34d38b3a14956121ff2170e5030b471551370178f43e5626eec58b04a30fae2
+xpack.reporting.encryptionKey: c34d38b3a14956121ff2170e5030b471551370178f43e5626eec58b04a30fae2

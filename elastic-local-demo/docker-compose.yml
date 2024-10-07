@@ -1,0 +1,84 @@
+volumes:
+  certs:
+    driver: local
+  elasticsearchdata:
+    driver: local
+  kibanadata:
+    driver: local
+  keystore:
+    driver: local
+
+networks:
+  elastic:
+    name: elastic
+    external: false
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+          gateway: 172.18.0.1
+
+services:
+  setup:
+    build:
+      context: .
+      dockerfile: init/Dockerfile
+    networks:
+      elastic:
+        ipv4_address: 172.18.0.5
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs:rw
+      - elasticsearchdata:/usr/share/elasticsearch/data:rw
+    command: >
+      bash -c '
+        echo "Waiting for Elasticsearch availability";
+        until curl -s --cacert config/certs/ca/ca.crt https://elasticsearch:9200 | grep -q "missing authentication credentials"; do
+        sleep 30; done;
+        echo "Now set up elastic password manually";
+      '
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/elasticsearch/elasticsearch.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+
+  elasticsearch:
+    depends_on:
+      setup:
+        condition: service_started
+    image: cgr.dev/chainguard-private/elasticsearch:${STACK_VERSION}
+    networks:
+      elastic:
+        ipv4_address: 172.18.0.10
+    labels:
+      co.elastic.logs/module: elasticsearch
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs:ro
+      - elasticsearchdata:/usr/share/elasticsearch/data:rw
+      - ./elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - 9200:9200
+    mem_limit: 1073741824
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  kibana:
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_started
+    image: cgr.dev/chainguard-private/kibana:${STACK_VERSION}
+    networks:
+      elastic:
+        ipv4_address: 172.18.0.11
+    labels:
+      co.elastic.logs/module: kibana
+    volumes:
+      - certs:/usr/share/kibana/config/certs:ro
+      - kibanadata:/usr/share/kibana/data:rw
+      - ./kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    ports:
+      - 5601:5601
+    mem_limit: 1073741824
